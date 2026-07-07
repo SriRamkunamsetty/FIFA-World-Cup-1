@@ -65,7 +65,9 @@ describe('AnthropicProvider', () => {
   });
 
   it('throws a clear error when the model response is not valid JSON', async () => {
-    const fakeFetch = vi.fn().mockResolvedValue(jsonResponse({ content: [{ type: 'text', text: 'not json' }] }));
+    const fakeFetch = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ content: [{ type: 'text', text: 'not json' }] }));
     const provider = new AnthropicProvider(fakeFetch as unknown as typeof fetch);
 
     await expect(provider.translateBroadcast({ message: 'hi', languages: ['en'] })).rejects.toThrow(
@@ -96,7 +98,9 @@ describe('AnthropicProvider', () => {
           {
             type: 'text',
             text: JSON.stringify({
-              insights: [{ id: 'acc-0', priority: 'high', recommendedAction: 'Dispatch mobility volunteer.' }],
+              insights: [
+                { id: 'acc-0', priority: 'high', recommendedAction: 'Dispatch mobility volunteer.' },
+              ],
             }),
           },
         ],
@@ -105,8 +109,25 @@ describe('AnthropicProvider', () => {
     const provider = new AnthropicProvider(fakeFetch as unknown as typeof fetch);
     const context = buildLiveSignalsFixture();
 
-    const insights = await provider.prioritizeAccessibilityRequests({ requests: context.accessibilityRequests });
-    expect(insights).toEqual([{ id: 'acc-0', priority: 'high', recommendedAction: 'Dispatch mobility volunteer.' }]);
+    const insights = await provider.prioritizeAccessibilityRequests({
+      requests: context.accessibilityRequests,
+    });
+    expect(insights).toEqual([
+      { id: 'acc-0', priority: 'high', recommendedAction: 'Dispatch mobility volunteer.' },
+    ]);
+  });
+
+  it('generates a briefing by extracting the plain-text model response', async () => {
+    const fakeFetch = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ content: [{ type: 'text', text: 'Gate A needs attention; all else normal.' }] }),
+      );
+    const provider = new AnthropicProvider(fakeFetch as unknown as typeof fetch);
+    const context = buildLiveSignalsFixture();
+
+    const briefing = await provider.generateBriefing(context);
+    expect(briefing).toBe('Gate A needs attention; all else normal.');
   });
 
   it('parses a streamed SSE response into concatenated text deltas', async () => {

@@ -50,7 +50,10 @@ export function BroadcastComposer({ csrfToken }: BroadcastComposerProps) {
 
   return (
     <Card as="section" aria-labelledby="broadcast-heading">
-      <h2 id="broadcast-heading" className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+      <h2
+        id="broadcast-heading"
+        className="font-display text-lg font-extrabold uppercase tracking-tight text-ink"
+      >
         Multilingual Broadcast
       </h2>
       <p className="mt-1 text-xs text-ink-muted">
@@ -69,9 +72,9 @@ export function BroadcastComposer({ csrfToken }: BroadcastComposerProps) {
             maxLength={300}
             rows={3}
             placeholder="e.g. Gate B will close in 10 minutes. Please use Gate A or Gate D."
-            className="w-full rounded-md border border-pitch-line bg-pitch-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint"
+            className="w-full rounded-md border border-pitch-line bg-pitch-bg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
           />
-          <p className="mt-1 text-right text-xs text-ink-faint">{message.length}/300</p>
+          <p className="mt-1 text-right text-xs text-ink-muted">{message.length}/300</p>
         </div>
 
         <fieldset>
@@ -83,7 +86,9 @@ export function BroadcastComposer({ csrfToken }: BroadcastComposerProps) {
                 <label
                   key={lang.code}
                   className={`cursor-pointer rounded-sm border px-2.5 py-1 text-xs font-medium ${
-                    checked ? 'border-floodlight bg-floodlight/15 text-ink' : 'border-pitch-line text-ink-muted'
+                    checked
+                      ? 'border-floodlight bg-floodlight/15 text-ink'
+                      : 'border-pitch-line text-ink-muted'
                   }`}
                 >
                   <input
@@ -134,7 +139,9 @@ export function BroadcastComposer({ csrfToken }: BroadcastComposerProps) {
               </p>
             </div>
           ))}
-          {result.cached && <p className="text-xs italic text-ink-faint">Served from cache — identical request.</p>}
+          {result.cached && (
+            <p className="text-xs italic text-ink-muted">Served from cache — identical request.</p>
+          )}
         </div>
       )}
     </Card>

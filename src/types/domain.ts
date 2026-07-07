@@ -42,11 +42,7 @@ export interface WeatherSnapshot {
 }
 
 export type AccessibilityRequestType =
-  | 'wheelchair-escort'
-  | 'sign-language'
-  | 'visual-assistance'
-  | 'medical'
-  | 'sensory-quiet-space';
+  'wheelchair-escort' | 'sign-language' | 'visual-assistance' | 'medical' | 'sensory-quiet-space';
 
 export type AccessibilityRequestStatus = 'open' | 'dispatched' | 'resolved';
 

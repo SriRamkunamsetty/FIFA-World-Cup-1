@@ -78,14 +78,21 @@ export function DecisionAssistantPanel({ csrfToken }: DecisionAssistantPanelProp
 
   return (
     <Card as="section" aria-labelledby="assistant-heading" className="flex h-full flex-col">
-      <h2 id="assistant-heading" className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+      <h2
+        id="assistant-heading"
+        className="font-display text-lg font-extrabold uppercase tracking-tight text-ink"
+      >
         AI Decision Assistant
       </h2>
       <p className="mt-1 text-xs text-ink-muted">
-        Ask about gates, transit, or staffing. Answers are grounded in the live operations data on this screen.
+        Ask about gates, transit, or staffing. Answers are grounded in the live operations data on this
+        screen.
       </p>
 
-      <div className="mt-3 flex-1 space-y-3 overflow-y-auto rounded-md bg-pitch-raised p-3" style={{ maxHeight: 320 }}>
+      <div
+        className="mt-3 flex-1 space-y-3 overflow-y-auto rounded-md bg-pitch-raised p-3"
+        style={{ maxHeight: 320 }}
+      >
         {messages.length === 0 && (
           <div className="flex flex-col gap-2">
             {SUGGESTIONS.map((s) => (
@@ -137,7 +144,7 @@ export function DecisionAssistantPanel({ csrfToken }: DecisionAssistantPanelProp
           placeholder="Ask a question…"
           maxLength={500}
           disabled={isStreaming}
-          className="flex-1 rounded-md border border-pitch-line bg-pitch-bg px-3 py-2 text-sm text-ink placeholder:text-ink-faint disabled:opacity-60"
+          className="flex-1 rounded-md border border-pitch-line bg-pitch-bg px-3 py-2 text-sm text-ink placeholder:text-ink-muted disabled:opacity-60"
         />
         <button
           type="submit"

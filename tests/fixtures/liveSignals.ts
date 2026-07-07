@@ -34,7 +34,9 @@ export function buildLiveSignalsFixture(overrides: Partial<LiveSignals> = {}): L
         projectedInflow: 180,
       },
     ],
-    transit: [{ id: 'rail-blue', name: 'Metrorail — Orange Line', mode: 'rail', state: 'on-time', etaMinutes: 6 }],
+    transit: [
+      { id: 'rail-blue', name: 'Metrorail — Orange Line', mode: 'rail', state: 'on-time', etaMinutes: 6 },
+    ],
     weather: { condition: 'Clear', tempCelsius: 29, advisory: null },
     accessibilityRequests: [
       {

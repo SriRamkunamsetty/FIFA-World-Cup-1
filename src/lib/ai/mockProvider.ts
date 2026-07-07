@@ -46,7 +46,9 @@ export class MockAiProvider implements AiProvider {
     };
   }
 
-  async prioritizeAccessibilityRequests({ requests }: AccessibilityInsightParams): Promise<AccessibilityInsight[]> {
+  async prioritizeAccessibilityRequests({
+    requests,
+  }: AccessibilityInsightParams): Promise<AccessibilityInsight[]> {
     return requests.map((request) => {
       const priority = priorityFor(request.type, request.minutesOpen);
       return {
@@ -56,6 +58,10 @@ export class MockAiProvider implements AiProvider {
       };
     });
   }
+
+  async generateBriefing(context: DecisionSupportParams['context']): Promise<string> {
+    return `${buildMockBriefingSentences(context).join(' ')} (Offline mock briefing — set ANTHROPIC_API_KEY for live Claude-generated analysis.)`;
+  }
 }
 
 function delay(ms: number): Promise<void> {
@@ -64,20 +70,62 @@ function delay(ms: number): Promise<void> {
 
 function buildMockDecisionReply(message: string, context: DecisionSupportParams['context']): string {
   const busiest = [...context.gates].sort((a, b) => b.waitTimeMinutes - a.waitTimeMinutes)[0];
-  const mentionedGate = context.gates.find((g) => message.toLowerCase().includes(g.label.split('—')[0]!.trim().toLowerCase()));
+  const mentionedGate = context.gates.find((g) =>
+    message.toLowerCase().includes((g.label.split('—')[0] ?? g.label).trim().toLowerCase()),
+  );
   const focusGate = mentionedGate ?? busiest;
 
   if (!focusGate) {
     return "All gates are currently reporting low density. No redirection is needed right now — I'll flag it the moment that changes.";
   }
 
-  const alternative = context.gates.find((g) => g.id !== focusGate.id && g.density === 'low') ?? context.gates[0];
+  const alternative =
+    context.gates.find((g) => g.id !== focusGate.id && g.density === 'low') ?? context.gates[0];
 
   return (
     `${focusGate.label} is ${focusGate.density} density with a ${focusGate.waitTimeMinutes}-minute wait and ${focusGate.trend} trend. ` +
     `Recommend redirecting incoming flow toward ${alternative?.label ?? 'a quieter gate'} and adding a volunteer to the ${focusGate.zone} queue lane. ` +
     `(This is an offline mock reply — set ANTHROPIC_API_KEY for live Claude-generated guidance.)`
   );
+}
+
+function buildMockBriefingSentences(context: DecisionSupportParams['context']): string[] {
+  const sentences: string[] = [];
+
+  const busiest = [...context.gates].sort((a, b) => b.waitTimeMinutes - a.waitTimeMinutes)[0];
+  sentences.push(
+    busiest && busiest.density !== 'low'
+      ? `${busiest.label} needs the most attention right now: ${busiest.density} density, ${busiest.waitTimeMinutes}-minute wait, ${busiest.trend}.`
+      : 'All gates are reporting low-to-moderate density with no immediate crowd concerns.',
+  );
+
+  const disrupted = context.transit.find((t) => t.state !== 'on-time');
+  if (disrupted) {
+    sentences.push(
+      `${disrupted.name} is ${disrupted.state} (ETA ${disrupted.etaMinutes} min) — factor this into arrival/departure guidance.`,
+    );
+  }
+
+  if (context.weather.advisory) {
+    sentences.push(context.weather.advisory);
+  }
+
+  const openLong = context.accessibilityRequests.filter((r) => r.status !== 'resolved' && r.minutesOpen > 15);
+  if (openLong.length > 0) {
+    sentences.push(
+      `${openLong.length} accessibility request${openLong.length > 1 ? 's have' : ' has'} been open over 15 minutes — check the Accessibility Insights panel.`,
+    );
+  }
+
+  const rail = context.transit.find((t) => t.mode === 'rail');
+  const shuttle = context.transit.find((t) => t.mode === 'shuttle');
+  if (rail?.state === 'on-time' && shuttle) {
+    sentences.push(
+      `${rail.name} is running normally — steering fans there over the shuttle reduces lot congestion and emissions.`,
+    );
+  }
+
+  return sentences;
 }
 
 function toPlainLanguage(message: string): string {

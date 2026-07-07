@@ -1,9 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { enforceRequestGuards } from '@/lib/security/guard';
 import { broadcastRequestSchema } from '@/lib/security/validation';
-import { getAiProvider } from '@/lib/ai/provider';
-import { cacheKeyFor, getCachedBroadcast, setCachedBroadcast } from '@/lib/cache/broadcastCache';
-import type { BroadcastResult } from '@/types/domain';
+import { translateBroadcastMessage } from '@/lib/services/broadcastService';
 
 export const runtime = 'nodejs';
 
@@ -14,22 +12,14 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.json().catch(() => null);
   const parsed = broadcastRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request.' }, { status: 400 });
-  }
-
-  const { message, languages } = parsed.data;
-  const key = cacheKeyFor(message, languages);
-  const cachedResult = getCachedBroadcast(key);
-
-  if (cachedResult) {
-    const result: BroadcastResult = { original: message, ...cachedResult, cached: true };
-    return NextResponse.json(result);
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid request.' },
+      { status: 400 },
+    );
   }
 
   try {
-    const aiResult = await getAiProvider().translateBroadcast({ message, languages });
-    setCachedBroadcast(key, aiResult);
-    const result: BroadcastResult = { original: message, ...aiResult, cached: false };
+    const result = await translateBroadcastMessage(parsed.data.message, parsed.data.languages);
     return NextResponse.json(result);
   } catch (error) {
     console.error('broadcast translation error:', error);

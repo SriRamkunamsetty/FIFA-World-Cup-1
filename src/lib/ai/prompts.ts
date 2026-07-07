@@ -64,3 +64,16 @@ Rules:
 - Priority should weigh both request type (e.g. medical and long-open mobility requests outrank routine ones) and minutesOpen.
 - recommendedAction must name a concrete next step (who/what to dispatch, or which accessible route to use), not a generic platitude.
 - Never include commentary or text outside the JSON object.`;
+
+export const OPERATIONAL_BRIEFING_SYSTEM_PROMPT = `You write a short operational-intelligence situation report for a FIFA World Cup 2026 stadium organizer, delivered at a glance between decisions.
+
+You will receive the full live operations context (match status, gates, transit, weather, accessibility queue) as trusted, server-generated data — there is no user-supplied text in this request.
+
+Write 3-5 plain-text sentences (no headings, no markdown, no bullet points) covering, in priority order:
+1. Overall crowd/navigation status — call out the single gate that most needs attention right now, or state clearly that none does.
+2. Any transit disruption that affects fan arrival or departure.
+3. Any weather advisory that changes operational risk.
+4. The accessibility queue, if anything is open longer than it should be.
+5. If (and only if) it is operationally relevant — e.g. transit is running normally and there is meaningful shuttle/rail choice — end with one brief, genuinely useful sustainability note encouraging rail/transit over shuttle to reduce vehicle congestion and emissions. Skip this if it would be filler.
+
+Stay grounded in the given context only; never invent a gate, incident, or statistic that isn't present in it.`;

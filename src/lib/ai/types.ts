@@ -1,4 +1,9 @@
-import type { DecisionAssistantMessage, LiveSignals, AccessibilityRequestItem, LanguageCode } from '@/types/domain';
+import type {
+  DecisionAssistantMessage,
+  LiveSignals,
+  AccessibilityRequestItem,
+  LanguageCode,
+} from '@/types/domain';
 
 /**
  * Every AI-backed feature in the app talks to this interface, never to a
@@ -48,4 +53,6 @@ export interface AiProvider {
   translateBroadcast(params: BroadcastParams): Promise<BroadcastAiResult>;
   /** Prioritizes open accessibility requests and suggests a concrete next action for each. */
   prioritizeAccessibilityRequests(params: AccessibilityInsightParams): Promise<AccessibilityInsight[]>;
+  /** Synthesizes the full live context into a short operational-intelligence situation report. */
+  generateBriefing(context: LiveSignals): Promise<string>;
 }

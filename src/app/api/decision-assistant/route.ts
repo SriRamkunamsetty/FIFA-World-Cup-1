@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { enforceRequestGuards } from '@/lib/security/guard';
 import { decisionAssistantRequestSchema } from '@/lib/security/validation';
-import { generateLiveSignals } from '@/lib/simulation/liveSignals';
-import { getAiProvider } from '@/lib/ai/provider';
+import { streamDecisionAssistantReply } from '@/lib/services/decisionAssistantService';
 
 export const runtime = 'nodejs';
 
@@ -13,21 +12,17 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.json().catch(() => null);
   const parsed = decisionAssistantRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request.' }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid request.' },
+      { status: 400 },
+    );
   }
-
-  const context = generateLiveSignals();
-  const provider = getAiProvider();
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const chunk of provider.streamDecisionSupport({
-          message: parsed.data.message,
-          history: parsed.data.history,
-          context,
-        })) {
+        for await (const chunk of streamDecisionAssistantReply(parsed.data)) {
           controller.enqueue(encoder.encode(chunk));
         }
       } catch (error) {

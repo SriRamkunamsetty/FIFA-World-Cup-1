@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { env } from '@/lib/env';
 import { languageCodeSchema } from '@/lib/security/validation';
-import { renderContextSummary, DECISION_ASSISTANT_SYSTEM_PROMPT, BROADCAST_SYSTEM_PROMPT, ACCESSIBILITY_SYSTEM_PROMPT } from './prompts';
+import {
+  renderContextSummary,
+  DECISION_ASSISTANT_SYSTEM_PROMPT,
+  BROADCAST_SYSTEM_PROMPT,
+  ACCESSIBILITY_SYSTEM_PROMPT,
+  OPERATIONAL_BRIEFING_SYSTEM_PROMPT,
+} from './prompts';
 import type {
   AiProvider,
   DecisionSupportParams,
@@ -10,6 +16,7 @@ import type {
   AccessibilityInsightParams,
   AccessibilityInsight,
 } from './types';
+import type { LiveSignals } from '@/types/domain';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -105,7 +112,9 @@ export class AnthropicProvider implements AiProvider {
     return broadcastResponseSchema.parse(safeJsonParse(text));
   }
 
-  async prioritizeAccessibilityRequests({ requests }: AccessibilityInsightParams): Promise<AccessibilityInsight[]> {
+  async prioritizeAccessibilityRequests({
+    requests,
+  }: AccessibilityInsightParams): Promise<AccessibilityInsight[]> {
     const response = await this.call({
       system: ACCESSIBILITY_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: JSON.stringify(requests) }],
@@ -115,6 +124,16 @@ export class AnthropicProvider implements AiProvider {
     const text = await extractText(response);
     const parsed = accessibilityResponseSchema.parse(safeJsonParse(text));
     return parsed.insights;
+  }
+
+  async generateBriefing(context: LiveSignals): Promise<string> {
+    const response = await this.call({
+      system: OPERATIONAL_BRIEFING_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: renderContextSummary(context) }],
+      maxTokens: 300,
+    });
+
+    return extractText(response);
   }
 }
 
@@ -183,7 +202,11 @@ async function* parseAnthropicTextStream(body: ReadableStream<Uint8Array>): Asyn
         }
 
         const delta = (payload as { type?: string; delta?: { type?: string; text?: string } }).delta;
-        if ((payload as { type?: string }).type === 'content_block_delta' && delta?.type === 'text_delta' && delta.text) {
+        if (
+          (payload as { type?: string }).type === 'content_block_delta' &&
+          delta?.type === 'text_delta' &&
+          delta.text
+        ) {
           yield delta.text;
         }
       }

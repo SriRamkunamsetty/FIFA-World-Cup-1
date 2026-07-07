@@ -40,10 +40,7 @@ export const broadcastRequestSchema = z.object({
     .trim()
     .min(1, 'Message cannot be empty.')
     .max(300, 'Keep broadcasts under 300 characters so they translate cleanly.'),
-  languages: z
-    .array(languageCodeSchema)
-    .min(1, 'Choose at least one language.')
-    .max(languageCodes.length),
+  languages: z.array(languageCodeSchema).min(1, 'Choose at least one language.').max(languageCodes.length),
 });
 
 export type BroadcastRequest = z.infer<typeof broadcastRequestSchema>;

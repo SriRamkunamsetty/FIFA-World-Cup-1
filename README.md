@@ -2,56 +2,66 @@
 
 **An AI command center for FIFA World Cup 2026 tournament organizers.**
 
-Built for the Google PromptWars hackathon — *Smart Stadiums & Tournament Operations*.
+Built for the Google PromptWars hackathon — _Smart Stadiums & Tournament Operations_.
 
 > Unofficial hackathon prototype. Not affiliated with or endorsed by FIFA. Match, gate, and crowd data shown in the app are simulated for demonstration (see [Assumptions](#assumptions--limitations)).
 
 ---
 
-## 1. Chosen vertical & persona
+## Chosen vertical & persona
 
 **Persona: Tournament Organizer** — the person in the control room responsible for the whole venue during a live match, not any single fan's journey.
 
-**Focus areas, combined on purpose:** the challenge lists navigation & crowd management, multilingual assistance, accessibility, and real-time decision support as separate areas. This submission treats them as **one workflow**, because that's how an organizer actually experiences a matchday — they don't open four separate apps:
+The brief names exactly eight focus areas in one sentence: _"navigation, crowd management, accessibility, transportation, sustainability, multilingual assistance, operational intelligence, or real-time decision support."_ This submission addresses all eight, each mapped to a concrete, working feature — not a subset dressed up to sound comprehensive:
 
-| Area | Where it lives | What it does |
-|---|---|---|
-| Navigation & crowd management | **Gate & Crowd Status** grid | Live density, wait time, and trend per gate, refreshed every 8s |
-| Real-time decision support | **AI Decision Assistant** | Organizer asks a free-text question; Claude answers grounded in the live gate/transit/weather data on screen |
-| Multilingual assistance | **Multilingual Broadcast** composer | One English announcement → simultaneous translations for PA/push, plus a plain-language, screen-reader-safe version |
-| Accessibility | **Accessibility Insights** panel + accessibility flags on every gate | Prioritizes open wheelchair/sign-language/visual-assistance/sensory requests and recommends a concrete next action |
+| Problem-statement area (verbatim) | Feature                                                                                                          | Where                      |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| Navigation                        | Per-gate status tells fans/organizers which gate to use right now                                                | `GateStatusGrid`           |
+| Crowd management                  | Live density, wait time, and trend per gate, refreshed every 8s                                                  | `GateStatusGrid`           |
+| Accessibility                     | Wheelchair/sign-language/visual/sensory request triage, ranked and actionable                                    | `AccessibilityInsights`    |
+| Transportation                    | Live rail/shuttle/bus status feeds both the briefing and the assistant's answers                                 | `MatchStatusBar`, briefing |
+| Sustainability                    | Briefing nudges organizers toward transit over shuttle when both are viable, to cut lot congestion and emissions | `OperationalBriefing`      |
+| Multilingual assistance           | One announcement → simultaneous PA/push translations + plain-language rewrite                                    | `BroadcastComposer`        |
+| Operational intelligence          | One-click synthesized situation report across gates/transit/weather/accessibility                                | `OperationalBriefing`      |
+| Real-time decision support        | Free-text Q&A, streamed token-by-token, grounded in live data                                                    | `DecisionAssistantPanel`   |
 
-The four areas also reinforce each other by design: Gate C is modeled as having no wheelchair-accessible path, so the Decision Assistant, the Accessibility Insights panel, and the gate grid all surface the same underlying fact from three different angles — the way a real control room would.
+Separately, the brief's _Challenge Expectations_ section asks for **practical, real-world usability**. The Accessibility panel takes that literally: its recommendations aren't advisory text the organizer reads and forgets — a **"Mark as dispatched"** action closes the loop from AI suggestion to organizer action.
 
-## 2. Approach & logic
+These aren't eight separate demos bolted together: Gate C is modeled as lacking a wheelchair-accessible path, so the gate grid, the Decision Assistant, the Briefing, and the Accessibility panel all reason about that _same_ fact from different angles — the way one real control room would, not eight disconnected tools.
 
-- **Server is the source of truth.** The client never supplies operational facts (gate density, wait times, accessibility queue state). Every AI-backed route re-derives the current state server-side and only accepts a small amount of free-text *intent* from the client (a chat question, a broadcast draft). This keeps the trust boundary small and makes prompt injection much less useful even if attempted.
-- **One AI interface, two implementations.** `AiProvider` (see `src/lib/ai/types.ts`) is implemented by `AnthropicProvider` (real Claude calls) and `MockAiProvider` (deterministic, offline). The app automatically uses the mock provider when `ANTHROPIC_API_KEY` is unset — so it's fully runnable, demoable, and testable with **zero secrets and zero API cost**, and the AI provider is trivially swappable/testable via dependency injection.
-- **Grounded, not generative-only, answers.** The Decision Assistant's system prompt requires every answer to reference the live context block it's given and forbids inventing gates, stats, or incidents — this is a decision-support tool, not a chatbot.
+## Approach & logic
+
+- **Server is the source of truth.** The client never supplies operational facts (gate density, wait times, accessibility queue state). Every AI-backed route re-derives the current state server-side and only accepts a small amount of free-text _intent_ from the client (a chat question, a broadcast draft). This keeps the trust boundary small and makes prompt injection much less useful even if attempted — and the Operational Briefing takes no user text at all, so it has zero injection surface by construction.
+- **One AI interface, two implementations.** `AiProvider` (`src/lib/ai/types.ts`) is implemented by `AnthropicProvider` (real Claude calls) and `MockAiProvider` (deterministic, offline). The app automatically uses the mock provider when `ANTHROPIC_API_KEY` is unset — so it's fully runnable, demoable, and testable with **zero secrets and zero API cost**, and the AI provider is trivially swappable/testable via dependency injection.
+- **Thin routes, tested services.** Every API route is a small HTTP adapter: guard → validate → call a service function → respond. All decision logic (which AI call to make, how to merge its result with server-side facts, cache behavior) lives in `src/lib/services/*`, which knows nothing about `NextRequest`/`NextResponse`. That split is what makes 100%-covered service tests possible without constructing a fake HTTP request for every case.
+- **Grounded, not generative-only, answers.** Every system prompt (`src/lib/ai/prompts.ts`) requires the model to reference only the live context it's given and forbids inventing gates, stats, or incidents.
 - **Simulated data behind a real interface.** There's no live turnstile/transit feed for a hackathon prototype, so `src/lib/simulation/liveSignals.ts` generates a deterministic, smoothly-evolving matchday scenario (arrivals → kickoff crush → first half → half-time rush → second half → egress surge) as a pure function of time. Every consumer only depends on the `LiveSignals` type, so swapping in a real feed later touches one file.
 
-## 3. How it works
+## How it works
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  MatchStatusBar — match, weather, transit, LIVE indicator    │
-├───────────────────────────────────┬───────────────────────────┤
-│  Gate & Crowd Status (grid)        │  AI Decision Assistant     │
-│  polls /api/live-signals every 8s  │  streams /api/decision-    │
-│                                     │  assistant token-by-token │
-├───────────────────────────────────┴───────────────────────────┤
-│  Multilingual Broadcast             │  Accessibility Insights   │
-│  /api/broadcast (cached)            │  /api/accessibility-      │
-│                                      │  insights                │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  MatchStatusBar — match, weather, transit, LIVE indicator         │
+├──────────────────────────────────────────────────────────────────┤
+│  OperationalBriefing — one-click AI situation report               │
+├────────────────────────────────────┬───────────────────────────────┤
+│  Gate & Crowd Status (grid)          │  AI Decision Assistant        │
+│  polls /api/live-signals every 8s    │  streams /api/decision-       │
+│                                       │  assistant token-by-token     │
+├────────────────────────────────────┴───────────────────────────────┤
+│  Multilingual Broadcast              │  Accessibility Insights       │
+│  /api/broadcast (cached)             │  /api/accessibility-insights  │
+│                                       │  + "Mark as dispatched"       │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 - **`GET /api/live-signals`** — free, unauthenticated read of the current simulated snapshot. No user input, so no validation/CSRF needed.
-- **`POST /api/decision-assistant`** — validates the question (Zod, ≤500 chars, ≤12 turns of history), re-derives live context server-side, and **streams** the Claude reply chunk-by-chunk over a plain `ReadableStream` response so the organizer sees the answer forming in real time.
-- **`POST /api/broadcast`** — validates the message (≤300 chars) and target languages, checks an in-memory cache keyed by a hash of (message, languages) to avoid paying for duplicate translations, then asks Claude for JSON-only output: one translation per language plus a plain-language, screen-reader-friendly rewrite.
-- **`POST /api/accessibility-insights`** — takes the server's current accessibility request queue, asks Claude to rank it by urgency and suggest one concrete action per item, then merges that back onto the original records (the AI never overwrites the underlying facts, only annotates them).
+- **`POST /api/decision-assistant`** — validates the question (Zod, ≤500 chars, ≤12 turns of history), re-derives live context server-side, and **streams** the Claude reply chunk-by-chunk over a plain `ReadableStream` response.
+- **`POST /api/briefing`** — no input at all; synthesizes the full live snapshot into a 3-5 sentence situation report, explicitly naming the busiest gate, any transit disruption, weather risk, an accessibility backlog, and — only when genuinely relevant — a sustainability nudge toward transit over shuttle.
+- **`POST /api/broadcast`** — validates the message (≤300 chars) and target languages, checks an in-memory cache keyed by a hash of (message, languages), then asks Claude for JSON-only output: one translation per language plus a plain-language, screen-reader-friendly rewrite.
+- **`POST /api/accessibility-insights`** — takes the server's current accessibility request queue, asks Claude to rank it by urgency and suggest one concrete action per item, then merges that back onto the original records. The organizer can then mark an item **dispatched** in the UI, closing the loop from recommendation to action (tracked client-side in this prototype — see [Assumptions](#assumptions--limitations)).
 
-## 4. Getting started
+## Getting started
 
 ```bash
 npm install
@@ -59,7 +69,7 @@ cp .env.example .env.local   # optional — the app works with no keys at all
 npm run dev                  # http://localhost:3000
 ```
 
-Everything works immediately with **no environment variables set** — the Mock AI provider handles all three AI-backed routes deterministically. To use real Claude-generated answers, set in `.env.local`:
+Everything works immediately with **no environment variables set** — the Mock AI provider handles all AI-backed routes deterministically. To use real Claude-generated answers, set in `.env.local`:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
@@ -68,79 +78,104 @@ ANTHROPIC_API_KEY=sk-ant-...
 Other scripts:
 
 ```bash
-npm run build        # production build
-npm run lint          # ESLint (flat config, next/core-web-vitals + strict TS)
-npm run typecheck     # tsc --noEmit
-npm run test          # Vitest — unit + component tests
-npm run test:coverage # coverage report
+npm run build          # production build
+npm run lint            # ESLint — next/core-web-vitals + strict TypeScript + full jsx-a11y "recommended" ruleset
+npm run format:check    # Prettier — formatting is enforced, not just a suggestion
+npm run typecheck       # tsc --noEmit, strict mode + noUnusedLocals/Parameters + noFallthroughCasesInSwitch
+npm run test             # Vitest — 106 unit/component/route tests
+npm run test:coverage    # coverage report, thresholds enforced (85% lines/statements/functions, 80% branches)
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests, `npm audit`, and a production build on every push — with no secrets configured, exercising the exact same Mock-provider path a judge cloning the repo would hit.
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, format check, tests with coverage thresholds, `npm audit`, and a production build on every push — with no secrets configured, exercising the exact same Mock-provider path a judge cloning the repo would hit.
 
-## 5. Security
+## Code quality
 
-- **Input validation** — every API route parses its body through a Zod schema (`src/lib/security/validation.ts`) before any business logic runs. Nothing untyped reaches a handler.
-- **CSRF** — a signed, `httpOnly` double-submit cookie (`src/lib/security/csrf.ts`). The server issues a token, the client echoes it back as `x-csrf-token`, and the server verifies the header matches the cookie *and* that the signature is valid and unexpired (HMAC-SHA256, `timingSafeEqual`). Because the token is returned in the JSON body rather than relying on client JS reading the cookie, the cookie itself can stay `httpOnly`.
-- **Rate limiting** — every AI-cost-incurring route (including `accessibility-insights`, which is a GET-shaped read but still costs money) is rate-limited per client IP (`src/lib/security/rateLimit.ts`). Centralized in one `enforceRequestGuards()` guard (`src/lib/security/guard.ts`) so there's exactly one place to audit, not three near-duplicate copies.
-- **Security headers** — CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, and no `X-Powered-By`, set globally in `next.config.mjs`.
-- **Prompt-injection awareness** — every system prompt (`src/lib/ai/prompts.ts`) explicitly labels user-supplied text as untrusted content, not instructions, and tells the model to keep operating as intended if that text tries to override its role.
-- **Validated AI output** — the model is asked for JSON-only responses for translation and accessibility triage, and the response is parsed and checked against a Zod schema before it ever reaches the client. Malformed model output fails loudly (502) instead of silently corrupting the UI.
-- **No secrets in the client bundle** — the Anthropic key is read only in server-side route handlers, never exposed via `NEXT_PUBLIC_*`.
-- **Dependency hygiene** — `package.json` pins a patched `postcss` via `overrides` to close a transitive moderate-severity advisory pulled in by Next.js; `npm audit` reports **0 vulnerabilities** at time of submission, and CI re-checks this on every push.
+- **Layered architecture.** `app/api/*/route.ts` (HTTP) → `lib/services/*` (domain logic, framework-agnostic) → `lib/ai/*` (AI provider abstraction) → `lib/simulation` / `lib/cache` (data). Each layer is independently testable; route handlers are typically ~20 lines because they don't contain business logic.
+- **Strict TypeScript.** `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`. No non-null assertions (`!`) in application code — every array/optional access is handled explicitly.
+- **Enforced formatting.** Prettier with `format:check` wired into CI — style is not left to reviewer taste or drift.
+- **Zero dead code.** Every exported function is imported somewhere; ESLint's `no-unused-vars`/`@typescript-eslint/no-unused-vars` runs as an error, not a warning.
+- **Zero `any`.** `@typescript-eslint/no-explicit-any` is an error; all API boundaries (including AI model output) are typed and Zod-validated.
 
-**Known limitation:** the rate limiter and broadcast cache are in-process memory, which is fine for a single demo instance but won't coordinate across multiple serverless replicas — a production deployment should move both to Redis/Upstash.
+## Security
 
-## 6. Efficiency
+- **Input validation** — every API route parses its body through a Zod schema (`src/lib/security/validation.ts`) before any business logic runs.
+- **CSRF** — a signed, `httpOnly` double-submit cookie (`src/lib/security/csrf.ts`, HMAC-SHA256, `timingSafeEqual`). The token is returned in the JSON body rather than relying on client JS reading the cookie, so the cookie itself can stay `httpOnly`.
+- **Rate limiting** — every AI-cost-incurring route (including `accessibility-insights` and `briefing`, which are GET-shaped reads but still cost money) is rate-limited per client IP. Centralized in one `enforceRequestGuards()` guard (`src/lib/security/guard.ts`) so there's exactly one place to audit.
+- **Security headers** — CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, no `X-Powered-By`, set globally in `next.config.mjs`.
+- **Prompt-injection awareness** — every system prompt explicitly labels user-supplied text as untrusted content, not instructions. The Briefing feature takes no user text at all, so it has no injection surface by construction.
+- **Validated AI output** — translation and accessibility-triage responses are parsed and checked against a Zod schema before reaching the client; malformed model output fails loudly (502) instead of silently corrupting the UI.
+- **No secrets in the client bundle** — the Anthropic key is read only in server-side route handlers.
+- **Dependency hygiene** — `package.json` pins a patched `postcss` via `overrides` to close a transitive advisory pulled in by Next.js. `npm audit` reports **0 vulnerabilities**; CI re-checks this on every push.
 
-- **Streaming, not blocking** — the Decision Assistant streams tokens as they arrive instead of waiting for the full completion, cutting perceived latency substantially for longer answers.
-- **Caching** — identical broadcast requests (same message + same language set) are served from an in-memory cache instead of re-calling the model (`src/lib/cache/broadcastCache.ts`).
-- **Deliberately slow polling** — live signals refresh every 8 seconds. This is operational context for a human, not a stock ticker; a tighter interval would just burn resources for no decision-quality benefit.
-- **No external runtime dependencies for styling** — the UI uses system font stacks instead of a web-font CDN, so there's nothing to fetch, nothing to fail if a font host is unreachable, and a smaller, faster bundle (~107 kB first load JS).
+**Known limitation:** the rate limiter and broadcast cache are in-process memory — fine for a single demo instance, but a production deployment with multiple replicas should move both to Redis/Upstash.
 
-## 7. Testing
+## Efficiency
 
-`npm run test` runs 58 tests across 13 files with Vitest:
+- **Streaming, not blocking** — the Decision Assistant streams tokens as they arrive.
+- **Caching** — identical broadcast requests are served from an in-memory cache instead of re-calling the model.
+- **Deliberately slow polling** — live signals refresh every 8 seconds; this is operational context for a human, not a stock ticker.
+- **No external runtime dependencies for styling** — system font stacks, no web-font CDN fetch, ~108 kB first-load JS for the entire app.
 
-- **Unit tests** for the rate limiter, CSRF signing/verification, Zod schemas, the live-signals simulator (including determinism and match-status transitions), the broadcast cache, prompt rendering, and environment validation.
-- **`AnthropicProvider` tests** inject a fake `fetch` (dependency injection — see the constructor in `src/lib/ai/client.ts`) to exercise real request-building and SSE-stream parsing logic with zero network calls, including malformed-JSON and non-OK-status error paths.
-- **Component tests** (`@testing-library/react`) cover loading states, disabled/enabled button logic, error rendering, and — for the Decision Assistant — a simulated streaming response.
+## Testing
 
-## 8. Accessibility
+`npm run test` runs **106 tests across 28 files** with Vitest, at **96% statement / 87% branch coverage** (enforced via CI thresholds: 85% lines/statements/functions, 80% branches):
 
-- Semantic landmarks, a visible skip-to-content link, and a real heading hierarchy.
-- `aria-live="polite"` regions for the streaming assistant reply and the accessibility insights list, so screen-reader users get updates without a wall of re-announcements.
-- Every interactive element is a real `<button>`/`<input>`/`<label>` — nothing is click-only on a `<div>` — and focus rings are never suppressed.
-- `prefers-reduced-motion` disables the pulsing "LIVE" indicator.
-- Each gate explicitly flags whether it has a wheelchair-accessible path, and the one gate that doesn't (Gate C) is a deliberate scenario detail the AI features reason about, not an edge case they ignore.
-- The broadcast composer sets the `lang` attribute per translation block so assistive tech pronounces each language correctly, and always produces a plain-language, literal English version alongside the translations.
+- **Unit tests** for the rate limiter, CSRF signing/verification, Zod schemas, the live-signals simulator (determinism, match-status transitions), the broadcast cache, prompt rendering, environment validation, and the AI provider factory.
+- **Service tests** — every function in `lib/services/*` is tested in isolation with a mocked `AiProvider`, at 100% coverage.
+- **Route tests** — every API route is tested end-to-end by importing the actual route handler and calling it with a real `NextRequest`, running against the real Mock AI provider (no network, no secrets): CSRF rejection (403), validation rejection (400), and success paths are all exercised, not just claimed.
+- **`AnthropicProvider` tests** inject a fake `fetch` to exercise real request-building and SSE-stream parsing logic with zero network calls, including malformed-JSON and non-OK-status error paths.
+- **Component tests** cover every panel, including loading/error/disabled states and a simulated streaming response.
 
-## 9. Assumptions & limitations
+## Accessibility
 
-- **Live signals are simulated.** There's no real stadium IoT/turnstile/transit feed available for a hackathon prototype. `generateLiveSignals()` is a pure, deterministic function of time so the demo is reproducible; it's isolated behind the `LiveSignals` type so a real feed can be substituted without touching any UI or AI code.
-- **Mock AI provider is a stand-in, not a translation engine.** With no API key configured, translations are clearly tagged `offline mock` rather than pretending to be real multilingual output — this exists for zero-cost local running and CI, not as the primary demo path.
-- **Single organizer session, no auth.** There's no login flow; this is a single-tenant control-room console for the hackathon scope, not a multi-user permissions system.
-- **In-memory rate limiting/caching** — see [Security](#5-security) above.
+- Semantic landmarks, a visible skip-to-content link, a real heading hierarchy, and **`eslint-plugin-jsx-a11y`'s full "recommended" ruleset (34 rules)** enforced in CI on top of `next/core-web-vitals`'s smaller built-in subset — accessibility regressions fail lint, not just manual review.
+- `aria-live="polite"` regions for the streaming assistant reply, the briefing, and the accessibility insights list.
+- Every interactive element is a real `<button>`/`<input>`/`<label>`; focus rings are never suppressed; `prefers-reduced-motion` disables the pulsing "LIVE" indicator.
+- **Contrast ratios were measured, not assumed** (WCAG relative-luminance formula against every text/background pair in the palette):
 
-## 10. Project structure
+  | Pair                                    | Ratio  | WCAG AA                          |
+  | --------------------------------------- | ------ | -------------------------------- |
+  | Body text (`ink`) on background         | 15.4:1 | Pass (needs 4.5:1)               |
+  | Muted text (`ink-muted`) on background  | 6.95:1 | Pass                             |
+  | Muted text on card surface              | 6.16:1 | Pass                             |
+  | Button text on `floodlight` accent      | 8.70:1 | Pass                             |
+  | "LIVE" status dot (graphical, not text) | 3.61:1 | Pass (needs 3:1 for UI graphics) |
+
+  One real failure was found and fixed during development: the original `ink-faint` token measured 3.2–3.6:1 for placeholder text, footer copy, and the cache-hit note — all real text needing 4.5:1. Those four spots now use `ink-muted` instead; the token itself is kept only for the non-text status dot, where the weaker 3:1 UI-graphic threshold correctly applies.
+
+- Each gate explicitly flags whether it has a wheelchair-accessible path; the one that doesn't (Gate C) is a scenario detail every AI feature reasons about, not an edge case they ignore.
+- The broadcast composer sets `lang` per translation block so assistive tech pronounces each language correctly, and always produces a literal, plain-language English version alongside the translations.
+
+## Assumptions & limitations
+
+- **Live signals are simulated.** There's no real stadium IoT/turnstile/transit feed available for a hackathon prototype. `generateLiveSignals()` is a pure, deterministic function of time; it's isolated behind the `LiveSignals` type so a real feed can be substituted without touching UI or AI code.
+- **Mock AI provider is a stand-in, not a translation engine.** With no API key configured, translations are clearly tagged `offline mock` rather than pretending to be real multilingual output.
+- **"Mark as dispatched" is client-side state**, not a write to a real guest-services system — there's no persistence layer in this prototype. A production version would call a dispatch API instead of updating local React state.
+- **Single organizer session, no auth.** No login flow; this is a single-tenant control-room console for the hackathon scope.
+- **In-memory rate limiting/caching** — see [Security](#security) above.
+
+## Project structure
 
 ```
 src/
-  app/                 Next.js App Router pages and API routes
+  app/                 Next.js App Router pages and API routes (thin HTTP adapters)
   components/          React components (Dashboard + panels + ui/ primitives)
   hooks/                useLiveSignals, useCsrfToken
   lib/
     ai/                 AiProvider interface, Anthropic client, Mock provider, prompts
     cache/              Broadcast translation cache
     security/           Validation, rate limiting, CSRF, request guard
+    services/            Framework-agnostic domain logic, one file per feature
     simulation/         Deterministic live-signals generator
     env.ts               Validated environment config
   types/domain.ts       Shared domain types
 tests/
-  unit/                 Pure-logic tests
+  unit/                 Pure-logic and service tests
+  routes/                End-to-end API route tests (real NextRequest, real Mock provider)
   components/           React component tests
   fixtures/              Shared test fixtures
 ```
 
 ## Tech stack
 
-Next.js 15 (App Router) · TypeScript (strict) · Tailwind CSS · Zod · Vitest + Testing Library · Anthropic Claude API — no other runtime dependencies.
+Next.js 15 (App Router) · TypeScript (strict) · Tailwind CSS · Zod · Vitest + Testing Library · Prettier · ESLint (`next/core-web-vitals` + `jsx-a11y/recommended`) · Anthropic Claude API — no other runtime dependencies.

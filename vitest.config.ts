@@ -16,8 +16,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['src/lib/**', 'src/components/**'],
-      exclude: ['src/app/**'],
+      include: ['src/lib/**', 'src/components/**', 'src/app/api/**'],
+      exclude: ['src/lib/ai/types.ts'], // interface-only file, zero runtime statements
+      thresholds: {
+        lines: 85,
+        functions: 85,
+        branches: 80,
+        statements: 85,
+      },
     },
   },
 });

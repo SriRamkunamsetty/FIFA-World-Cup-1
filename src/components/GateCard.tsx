@@ -18,7 +18,10 @@ export function GateCard({ gate }: { gate: Gate }) {
   return (
     <Card as="section" aria-labelledby={`${gate.id}-heading`} className="flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
-        <h3 id={`${gate.id}-heading`} className="font-display text-sm font-bold uppercase tracking-wide text-ink">
+        <h3
+          id={`${gate.id}-heading`}
+          className="font-display text-sm font-bold uppercase tracking-wide text-ink"
+        >
           {gate.label}
         </h3>
         {gate.wheelchairAccessible ? (

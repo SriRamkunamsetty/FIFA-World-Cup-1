@@ -38,7 +38,10 @@ describe('decisionAssistantRequestSchema', () => {
 
 describe('broadcastRequestSchema', () => {
   it('accepts a valid message with supported languages', () => {
-    const result = broadcastRequestSchema.safeParse({ message: 'Gate B closing soon.', languages: ['en', 'es'] });
+    const result = broadcastRequestSchema.safeParse({
+      message: 'Gate B closing soon.',
+      languages: ['en', 'es'],
+    });
     expect(result.success).toBe(true);
   });
 
@@ -58,7 +61,10 @@ describe('broadcastRequestSchema', () => {
   });
 
   it('trims whitespace from the message', () => {
-    const result = broadcastRequestSchema.safeParse({ message: '  Gate B closing soon.  ', languages: ['en'] });
+    const result = broadcastRequestSchema.safeParse({
+      message: '  Gate B closing soon.  ',
+      languages: ['en'],
+    });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.message).toBe('Gate B closing soon.');
   });

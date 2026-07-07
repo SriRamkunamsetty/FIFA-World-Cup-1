@@ -29,14 +29,20 @@ describe('broadcastCache', () => {
 
   it('returns the stored value before it expires', () => {
     const key = cacheKeyFor('Gate B closing', ['en']);
-    const value = { translations: [{ language: 'en' as const, text: 'Gate B closing' }], plainLanguageVersion: 'Gate B closing.' };
+    const value = {
+      translations: [{ language: 'en' as const, text: 'Gate B closing' }],
+      plainLanguageVersion: 'Gate B closing.',
+    };
     setCachedBroadcast(key, value, 1_000);
     expect(getCachedBroadcast(key, 1_000 + 60_000)).toEqual(value);
   });
 
   it('expires entries after the TTL', () => {
     const key = cacheKeyFor('Gate B closing', ['en']);
-    const value = { translations: [{ language: 'en' as const, text: 'Gate B closing' }], plainLanguageVersion: 'Gate B closing.' };
+    const value = {
+      translations: [{ language: 'en' as const, text: 'Gate B closing' }],
+      plainLanguageVersion: 'Gate B closing.',
+    };
     setCachedBroadcast(key, value, 1_000);
     expect(getCachedBroadcast(key, 1_000 + 6 * 60 * 1000)).toBeNull(); // TTL is 5 minutes
   });

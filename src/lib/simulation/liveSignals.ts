@@ -39,11 +39,29 @@ interface GateBlueprint {
 
 const GATE_BLUEPRINTS: GateBlueprint[] = [
   { id: 'gate-a', label: 'Gate A — North Plaza', zone: 'North', wheelchairAccessible: true, baseLoad: 0.75 },
-  { id: 'gate-b', label: 'Gate B — South Concourse', zone: 'South', wheelchairAccessible: true, baseLoad: 0.7 },
-  { id: 'gate-c', label: 'Gate C — East Riverside', zone: 'East', wheelchairAccessible: false, baseLoad: 0.55 },
+  {
+    id: 'gate-b',
+    label: 'Gate B — South Concourse',
+    zone: 'South',
+    wheelchairAccessible: true,
+    baseLoad: 0.7,
+  },
+  {
+    id: 'gate-c',
+    label: 'Gate C — East Riverside',
+    zone: 'East',
+    wheelchairAccessible: false,
+    baseLoad: 0.55,
+  },
   { id: 'gate-d', label: 'Gate D — West Terrace', zone: 'West', wheelchairAccessible: true, baseLoad: 0.5 },
   { id: 'gate-e', label: 'Gate E — VIP & Media', zone: 'VIP', wheelchairAccessible: true, baseLoad: 0.25 },
-  { id: 'gate-f', label: 'Gate F — Accessible Entrance', zone: 'Accessible', wheelchairAccessible: true, baseLoad: 0.2 },
+  {
+    id: 'gate-f',
+    label: 'Gate F — Accessible Entrance',
+    zone: 'Accessible',
+    wheelchairAccessible: true,
+    baseLoad: 0.2,
+  },
 ];
 
 const MATCH_CONTEXT: Omit<MatchContext, 'matchStatus'> = {
@@ -151,7 +169,9 @@ function buildTransit(position: number): TransitLine[] {
       name: 'Express Shuttle — Lot C',
       mode: 'shuttle',
       state: isKickoffWindow ? 'disrupted' : 'on-time',
-      etaMinutes: isKickoffWindow ? 20 : Math.round(5 + hashToUnit(`shuttle:${Math.floor(position * 200)}`) * 8),
+      etaMinutes: isKickoffWindow
+        ? 20
+        : Math.round(5 + hashToUnit(`shuttle:${Math.floor(position * 200)}`) * 8),
     },
     {
       id: 'bus-42',
@@ -219,10 +239,11 @@ const ACCESSIBILITY_TEMPLATES: Array<{
   },
 ];
 
-function buildAccessibilityRequests(nowMs: number, position: number): AccessibilityRequestItem[] {
+function buildAccessibilityRequests(position: number): AccessibilityRequestItem[] {
   return ACCESSIBILITY_TEMPLATES.map((template, index) => {
     const growth = Math.floor(position * 30);
-    const minutesOpen = template.baseMinutes + growth + Math.floor(hashToUnit(`${template.type}:${index}`) * 4);
+    const minutesOpen =
+      template.baseMinutes + growth + Math.floor(hashToUnit(`${template.type}:${index}`) * 4);
     const status = minutesOpen > 30 ? 'dispatched' : minutesOpen > 45 ? 'resolved' : 'open';
     return {
       id: `acc-${index}`,
@@ -245,6 +266,6 @@ export function generateLiveSignals(now: Date = new Date()): LiveSignals {
     gates: buildGates(nowMs),
     transit: buildTransit(position),
     weather: buildWeather(nowMs),
-    accessibilityRequests: buildAccessibilityRequests(nowMs, position),
+    accessibilityRequests: buildAccessibilityRequests(position),
   };
 }

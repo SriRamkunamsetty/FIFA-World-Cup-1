@@ -5,12 +5,16 @@ export function GateStatusGrid({ signals }: { signals: LiveSignals | null }) {
   return (
     <section aria-labelledby="gate-status-heading" className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <h2 id="gate-status-heading" className="font-display text-lg font-extrabold uppercase tracking-tight text-ink">
+        <h2
+          id="gate-status-heading"
+          className="font-display text-lg font-extrabold uppercase tracking-tight text-ink"
+        >
           Gate &amp; Crowd Status
         </h2>
         {signals && (
           <p className="text-xs text-ink-muted">
-            Updated {new Date(signals.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            Updated{' '}
+            {new Date(signals.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </p>
         )}
       </div>

@@ -59,10 +59,7 @@ function MatchStatusIndicator({ status }: { status: LiveSignals['match']['matchS
     <div className="flex items-center gap-2" role="status">
       <span
         aria-hidden="true"
-        className={cn(
-          'h-2.5 w-2.5 rounded-full',
-          isLive ? 'animate-pulse-dot bg-alert' : 'bg-ink-faint',
-        )}
+        className={cn('h-2.5 w-2.5 rounded-full', isLive ? 'animate-pulse-dot bg-alert' : 'bg-ink-faint')}
       />
       <span className="font-semibold uppercase tracking-wide text-ink">{label}</span>
     </div>

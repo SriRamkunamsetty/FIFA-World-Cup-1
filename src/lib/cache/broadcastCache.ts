@@ -19,7 +19,9 @@ const MAX_ENTRIES = 200;
 const cache = new Map<string, CacheEntry>();
 
 export function cacheKeyFor(message: string, languages: readonly string[]): string {
-  return createHash('sha256').update(`${message}::${[...languages].sort().join(',')}`).digest('hex');
+  return createHash('sha256')
+    .update(`${message}::${[...languages].sort().join(',')}`)
+    .digest('hex');
 }
 
 export function getCachedBroadcast(key: string, now: number = Date.now()): BroadcastAiResult | null {
