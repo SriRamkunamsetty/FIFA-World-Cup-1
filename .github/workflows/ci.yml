@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit & component tests
+        run: npm run test
+
+      - name: Audit for known vulnerabilities
+        run: npm audit --audit-level=high
+
+      - name: Build
+        run: npm run build
+        env:
+          # CI intentionally runs with no ANTHROPIC_API_KEY: the app must
+          # build and the AI-backed routes must work via the Mock provider
+          # with zero secrets configured.
+          CSRF_SECRET: ci-only-secret-not-used-in-production
