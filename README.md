@@ -41,18 +41,18 @@ These aren't eight separate demos bolted together: Gate C is modeled as lacking 
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  MatchStatusBar — match, weather, transit, LIVE indicator         │
+│  MatchStatusBar - match, weather, transit, LIVE indicator        │
 ├──────────────────────────────────────────────────────────────────┤
-│  OperationalBriefing — one-click AI situation report               │
-├────────────────────────────────────┬───────────────────────────────┤
-│  Gate & Crowd Status (grid)          │  AI Decision Assistant        │
-│  polls /api/live-signals every 8s    │  streams /api/decision-       │
-│                                       │  assistant token-by-token     │
-├────────────────────────────────────┴───────────────────────────────┤
-│  Multilingual Broadcast              │  Accessibility Insights       │
-│  /api/broadcast (cached)             │  /api/accessibility-insights  │
-│                                       │  + "Mark as dispatched"       │
-└──────────────────────────────────────────────────────────────────┘
+│  OperationalBriefing - one-click AI situation report             │
+├───────────────────────────────────┬──────────────────────────────┤
+│  Gate & Crowd Status (grid)       │  AI Decision Assistant       │
+│  polls /api/live-signals every 8s │  streams /api/decision-      │
+│                                   │  assistant token-by-token    │
+├───────────────────────────────────┼──────────────────────────────┤
+│  Multilingual Broadcast           │  Accessibility Insights      │
+│  /api/broadcast (cached)          │  /api/accessibility-insights │
+│                                   │  + "Mark as dispatched"      │
+└───────────────────────────────────┴──────────────────────────────┘
 ```
 
 - **`GET /api/live-signals`** — free, unauthenticated read of the current simulated snapshot. No user input, so no validation/CSRF needed.
